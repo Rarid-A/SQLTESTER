@@ -1,4 +1,3 @@
--- moved from public/samples; same contents
 CREATE TABLE Unit (
     UnitID      INTEGER IDENTITY(1,1),
     UnitNo      CHAR(5) NOT NULL,
@@ -76,12 +75,16 @@ CREATE TABLE Car (
     CONSTRAINT FK_Car_Employee FOREIGN KEY(EmployeeID) REFERENCES Employee(EmployeeID)
 );
 
+-- Insert data into Unit
+-- We insert Unit numbers, names, and addresses directly.
 INSERT INTO Unit (UnitNo, UnitName, UnitAddress)
 VALUES
     ('U1', 'General Surgery', 'Hospital road'),
     ('U2', 'Rehabilitation', 'Hospital road'),
     ('U3', 'Trauma', 'Care road');
 
+-- Insert data into Employee
+-- We insert Employee Number (EmpNo) and other details. EmployeeID is auto-generated.
 INSERT INTO Employee (EmpNo, EmpName, EmpAddress, EmpPhoneNumber, EmpSalary, UnitID)
 VALUES
     ('E1', 'Anna', 'Lund', '111', 25000, (SELECT UnitID FROM Unit WHERE UnitNo = 'U1')),
@@ -91,6 +94,8 @@ VALUES
     ('E5', 'Eva', 'Malmö', '555', 279000, (SELECT UnitID FROM Unit WHERE UnitNo = 'U3')),
     ('E6', 'Peter', 'Dalby', '666', 32000, (SELECT UnitID FROM Unit WHERE UnitNo = 'U1'));
 
+-- Insert data into Patient
+-- We insert Patient Number (PatientNo) and other details. PatientID is auto-generated.
 INSERT INTO Patient (PatientNo, PatientName, PatientAddress, PatientPhoneNumber, UnitID)
 VALUES
     ('PP1', 'Anna', 'Lund', '111', (SELECT UnitID FROM Unit WHERE UnitNo = 'U1')),
@@ -100,6 +105,8 @@ VALUES
     ('PP5', 'Anna', 'London', '100', (SELECT UnitID FROM Unit WHERE UnitNo = 'U2')),
     ('PP6', 'Anna', 'Berlin', '111', (SELECT UnitID FROM Unit WHERE UnitNo = 'U1'));
 
+-- Insert data into Examines
+-- Links Employees and Patients. We use subqueries to fetch EmployeeID and PatientID.
 INSERT INTO Examines (EmployeeID, PatientID)
 VALUES
     ((SELECT EmployeeID FROM Employee WHERE EmpNo = 'E1'), (SELECT PatientID FROM Patient WHERE PatientNo = 'PP1')),
@@ -114,9 +121,19 @@ VALUES
     ((SELECT EmployeeID FROM Employee WHERE EmpNo = 'E4'), (SELECT PatientID FROM Patient WHERE PatientNo = 'PP3')),
     ((SELECT EmployeeID FROM Employee WHERE EmpNo = 'E4'), (SELECT PatientID FROM Patient WHERE PatientNo = 'PP4'));
 
+-- Insert data into Illness
+-- We insert illness names directly. IllnessID is auto-generated.
 INSERT INTO Illness (IllnessName)
-VALUES ('Insomnia'), ('Love sickness'), ('Cough'), ('Amnesia'), ('Incontinence'), ('Chickenpox');
+VALUES
+    ('Insomnia'),
+    ('Love sickness'),
+    ('Cough'),
+    ('Amnesia'),
+    ('Incontinence'),
+    ('Chickenpox');
 
+-- Insert data into Suffers
+-- Links Illnesses and Patients with start dates. Using subqueries for IDs.
 INSERT INTO Suffers (IllnessID, PatientID, StartDate)
 VALUES
     ((SELECT IllnessID FROM Illness WHERE IllnessName = 'Insomnia'), (SELECT PatientID FROM Patient WHERE PatientNo = 'PP1'), '1953-01-12'),
@@ -129,6 +146,8 @@ VALUES
     ((SELECT IllnessID FROM Illness WHERE IllnessName = 'Incontinence'), (SELECT PatientID FROM Patient WHERE PatientNo = 'PP6'), '1989-11-11'),
     ((SELECT IllnessID FROM Illness WHERE IllnessName = 'Amnesia'), (SELECT PatientID FROM Patient WHERE PatientNo = 'PP6'), '2010-12-09');
 
+-- Insert data into HasSuffered
+-- Links Illnesses and Patients without start dates.
 INSERT INTO HasSuffered (IllnessID, PatientID)
 VALUES
     ((SELECT IllnessID FROM Illness WHERE IllnessName = 'Love sickness'), (SELECT PatientID FROM Patient WHERE PatientNo = 'PP1')),
@@ -141,4 +160,26 @@ VALUES
     ((SELECT IllnessID FROM Illness WHERE IllnessName = 'Insomnia'), (SELECT PatientID FROM Patient WHERE PatientNo = 'PP6')),
     ((SELECT IllnessID FROM Illness WHERE IllnessName = 'Amnesia'), (SELECT PatientID FROM Patient WHERE PatientNo = 'PP6'));
 
+-- Insert data into Car
+-- We insert License Number (LicenseNo), Brand, Price, and link to Employee if applicable.
+INSERT INTO Car (LicenseNo, Brand, Price, EmployeeID)
+VALUES
+    ('C1', 'saab', 30000, NULL),
+    ('C2', 'saab', 40000, (SELECT EmployeeID FROM Employee WHERE EmpNo = 'E1')),
+    ('C3', 'volvo', 50000, (SELECT EmployeeID FROM Employee WHERE EmpNo = 'E2')),
+    ('C4', 'volvo', 60000, (SELECT EmployeeID FROM Employee WHERE EmpNo = 'E3')),
+    ('C5', 'audi', 70000, (SELECT EmployeeID FROM Employee WHERE EmpNo = 'E4')),
+    ('C6', 'audi', 30000, NULL),
+    ('C7', 'saab', 30000, (SELECT EmployeeID FROM Employee WHERE EmpNo = 'E5'));
 
+-- Drop tables (uncomment to drop)
+/*
+DROP TABLE HasSuffered;
+DROP TABLE Suffers;
+DROP TABLE Examines;
+DROP TABLE Car;
+DROP TABLE Patient;
+DROP TABLE Employee;
+DROP TABLE Illness;
+DROP TABLE Unit;
+*/
