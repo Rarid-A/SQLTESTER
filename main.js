@@ -195,12 +195,32 @@ function ensureDb() {
 function transformTsqlToSqlite(inputSql) {
   let sql = inputSql.replace(/\r\n/g, '\n');
 
+  // Replace SQL Server functions with SQLite equivalents
+  sql = sql.replace(/\bISNULL\s*\(/gi, 'IFNULL(')
+           .replace(/\bGETDATE\s*\(\s*\)/gi, "datetime('now')")
+           .replace(/\bLEN\s*\(/gi, 'LENGTH(')
+           .replace(/\bNEWID\s*\(\s*\)/gi, "hex(randomblob(16))")
+           .replace(/\bCONVERT\s*\(([^,]+),\s*([^)]+)\)/gi, '$2') // crude: just use the value
+           .replace(/\bCAST\s*\(([^)]+)\s+AS\s+[^)]+\)/gi, '$1') // crude: just use the value
+           .replace(/\bGETUTCDATE\s*\(\s*\)/gi, "datetime('now')")
+           .replace(/\bDATEADD\s*\(([^,]+),\s*([^,]+),\s*([^)]+)\)/gi, '$3') // crude: just use the date
+           .replace(/\bDATENAME\s*\(([^,]+),\s*([^)]+)\)/gi, '$2') // crude: just use the date
+           .replace(/\bDATEPART\s*\(([^,]+),\s*([^)]+)\)/gi, '$2') // crude: just use the date
+           .replace(/\bGETDATE\b/gi, "datetime('now')");
+
   // Map common types globally first
   sql = sql.replace(/\bNVARCHAR\s*\(\s*\d+\s*\)/gi, 'TEXT')
            .replace(/\bVARCHAR\s*\(\s*\d+\s*\)/gi, 'TEXT')
            .replace(/\bCHAR\s*\(\s*\d+\s*\)/gi, 'TEXT')
            .replace(/\bDATETIME\b/gi, 'TEXT')
-           .replace(/\bINT\b/gi, 'INTEGER');
+           .replace(/\bINT\b/gi, 'INTEGER')
+           .replace(/\bBIT\b/gi, 'INTEGER')
+           .replace(/\bMONEY\b/gi, 'REAL')
+           .replace(/\bSMALLINT\b/gi, 'INTEGER')
+           .replace(/\bUNIQUEIDENTIFIER\b/gi, 'TEXT');
+
+  // Remove GO statements (batch separator in SQL Server)
+  sql = sql.replace(/^GO$/gim, '');
 
   // Process each CREATE TABLE block so we can reliably remove duplicate PK constraints
   sql = sql.replace(/CREATE\s+TABLE\s+(\w+)\s*\(([\s\S]*?)\)\s*;/gi, (full, tableName, body) => {
@@ -209,28 +229,18 @@ function transformTsqlToSqlite(inputSql) {
 
     // Replace IDENTITY columns
     newBody = newBody.replace(/(\b\w+\b)\s+INTEGER\s+IDENTITY\s*\(\s*\d+\s*,\s*\d+\s*\)/gi, (m, col) => {
-      identityCols.push(col.toLowerCase());
+      identityCols.push(col);
       return `${col} INTEGER PRIMARY KEY AUTOINCREMENT`;
     });
 
     // Remove duplicate table-level PRIMARY KEY(col) constraints for those columns
     for (const col of identityCols) {
-      // remove with or without a leading comma and with optional constraint name
-      const pattern = new RegExp(
-        `(,\s*)?(?:CONSTRAINT\s+\w+\s+)?PRIMARY\s+KEY\s*\(\s*${col}\s*\)\s*(,\s*)?`,
-        'gi'
-      );
-      newBody = newBody.replace(pattern, (match, leadingComma, trailingComma) => {
-        // if both sides have commas, keep a single comma
-        return leadingComma || trailingComma ? ',' : '';
-      });
+      newBody = newBody.replace(new RegExp(`CONSTRAINT\\s+\\w+\\s+PRIMARY\\s+KEY\\s*\\(\\s*${col}\\s*\\)\\s*,?`, 'gi'), '');
     }
 
     // If any inline PRIMARY KEY exists, remove any remaining table-level PRIMARY KEY(...) to avoid duplicates
     if (/\bPRIMARY\s+KEY\b/i.test(newBody)) {
-      newBody = newBody.replace(/(,\s*)?(?:CONSTRAINT\s+\w+\s+)?PRIMARY\s+KEY\s*\([^)]*\)\s*(,\s*)?/gi, (match, leadingComma, trailingComma) => {
-        return leadingComma || trailingComma ? ',' : '';
-      });
+      newBody = newBody.replace(/CONSTRAINT\s+\w+\s+PRIMARY\s+KEY\s*\([^)]*\)\s*,?/gi, '');
     }
 
     // Clean up double commas, commas before closing paren, and extra whitespace
