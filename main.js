@@ -452,5 +452,3 @@ document.addEventListener('DOMContentLoaded', async () => {
     sampleSelect.addEventListener('change', (e) => loadSample(e.target.value));
   }
 });
-
-
