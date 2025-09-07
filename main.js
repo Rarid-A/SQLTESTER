@@ -190,6 +190,18 @@ function transformTsqlToSqlite(inputSql) {
            .replace(/\bDATETIME\b/gi, 'TEXT')
            .replace(/\bINT\b/gi, 'INTEGER');
 
+  // Transform: SELECT ... INTO newtable FROM ...
+  // Regex breakdown:
+  //   ^SELECT(.*?)INTO\s+(\w+)\s+(FROM\s+.*?;)
+  // Handles multi-line and ignores case
+  sql = sql.replace(
+    /SELECT([\s\S]*?)INTO\s+(\w+)\s+(FROM[\s\S]*?;)/gi,
+    (match, selectCols, tableName, fromRest) => {
+      // Clean up whitespace
+      return `CREATE TABLE ${tableName} AS SELECT${selectCols.trim()} ${fromRest.trim()}`;
+    }
+  );
+
   // Process each CREATE TABLE block so we can reliably remove duplicate PK constraints
   sql = sql.replace(/CREATE\s+TABLE\s+(\w+)\s*\(([\s\S]*?)\)\s*;/gi, (full, tableName, body) => {
     let newBody = body;
