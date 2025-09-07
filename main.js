@@ -164,6 +164,18 @@ VALUES
     ((SELECT IllnessID FROM Illness WHERE IllnessName = 'Insomnia'), (SELECT PatientID FROM Patient WHERE PatientNo = 'PP6')),
     ((SELECT IllnessID FROM Illness WHERE IllnessName = 'Amnesia'), (SELECT PatientID FROM Patient WHERE PatientNo = 'PP6'));
 
+    -- Insert data into Car
+-- We insert License Number (LicenseNo), Brand, Price, and link to Employee if applicable.
+INSERT INTO Car (LicenseNo, Brand, Price, EmployeeID)
+VALUES
+    ('C1', 'saab', 30000, NULL),
+    ('C2', 'saab', 40000, (SELECT EmployeeID FROM Employee WHERE EmpNo = 'E1')),
+    ('C3', 'volvo', 50000, (SELECT EmployeeID FROM Employee WHERE EmpNo = 'E2')),
+    ('C4', 'volvo', 60000, (SELECT EmployeeID FROM Employee WHERE EmpNo = 'E3')),
+    ('C5', 'audi', 70000, (SELECT EmployeeID FROM Employee WHERE EmpNo = 'E4')),
+    ('C6', 'audi', 30000, NULL),
+    ('C7', 'saab', 30000, (SELECT EmployeeID FROM Employee WHERE EmpNo = 'E5'));
+
 -- Drop tables (uncomment to drop)
 /*
 DROP TABLE HasSuffered;
@@ -183,12 +195,32 @@ function ensureDb() {
 function transformTsqlToSqlite(inputSql) {
   let sql = inputSql.replace(/\r\n/g, '\n');
 
+  // Replace SQL Server functions with SQLite equivalents
+  sql = sql.replace(/\bISNULL\s*\(/gi, 'IFNULL(')
+           .replace(/\bGETDATE\s*\(\s*\)/gi, "datetime('now')")
+           .replace(/\bLEN\s*\(/gi, 'LENGTH(')
+           .replace(/\bNEWID\s*\(\s*\)/gi, "hex(randomblob(16))")
+           .replace(/\bCONVERT\s*\(([^,]+),\s*([^)]+)\)/gi, '$2') // crude: just use the value
+           .replace(/\bCAST\s*\(([^)]+)\s+AS\s+[^)]+\)/gi, '$1') // crude: just use the value
+           .replace(/\bGETUTCDATE\s*\(\s*\)/gi, "datetime('now')")
+           .replace(/\bDATEADD\s*\(([^,]+),\s*([^,]+),\s*([^)]+)\)/gi, '$3') // crude: just use the date
+           .replace(/\bDATENAME\s*\(([^,]+),\s*([^)]+)\)/gi, '$2') // crude: just use the date
+           .replace(/\bDATEPART\s*\(([^,]+),\s*([^)]+)\)/gi, '$2') // crude: just use the date
+           .replace(/\bGETDATE\b/gi, "datetime('now')");
+
   // Map common types globally first
   sql = sql.replace(/\bNVARCHAR\s*\(\s*\d+\s*\)/gi, 'TEXT')
            .replace(/\bVARCHAR\s*\(\s*\d+\s*\)/gi, 'TEXT')
            .replace(/\bCHAR\s*\(\s*\d+\s*\)/gi, 'TEXT')
            .replace(/\bDATETIME\b/gi, 'TEXT')
-           .replace(/\bINT\b/gi, 'INTEGER');
+           .replace(/\bINT\b/gi, 'INTEGER')
+           .replace(/\bBIT\b/gi, 'INTEGER')
+           .replace(/\bMONEY\b/gi, 'REAL')
+           .replace(/\bSMALLINT\b/gi, 'INTEGER')
+           .replace(/\bUNIQUEIDENTIFIER\b/gi, 'TEXT');
+
+  // Remove GO statements (batch separator in SQL Server)
+  sql = sql.replace(/^GO$/gim, '');
 
   // Transform: SELECT ... INTO newtable FROM ...
   // Regex breakdown:
@@ -209,28 +241,18 @@ function transformTsqlToSqlite(inputSql) {
 
     // Replace IDENTITY columns
     newBody = newBody.replace(/(\b\w+\b)\s+INTEGER\s+IDENTITY\s*\(\s*\d+\s*,\s*\d+\s*\)/gi, (m, col) => {
-      identityCols.push(col.toLowerCase());
+      identityCols.push(col);
       return `${col} INTEGER PRIMARY KEY AUTOINCREMENT`;
     });
 
     // Remove duplicate table-level PRIMARY KEY(col) constraints for those columns
     for (const col of identityCols) {
-      // remove with or without a leading comma and with optional constraint name
-      const pattern = new RegExp(
-        `(,\s*)?(?:CONSTRAINT\s+\w+\s+)?PRIMARY\s+KEY\s*\(\s*${col}\s*\)\s*(,\s*)?`,
-        'gi'
-      );
-      newBody = newBody.replace(pattern, (match, leadingComma, trailingComma) => {
-        // if both sides have commas, keep a single comma
-        return leadingComma || trailingComma ? ',' : '';
-      });
+      newBody = newBody.replace(new RegExp(`CONSTRAINT\\s+\\w+\\s+PRIMARY\\s+KEY\\s*\\(\\s*${col}\\s*\\)\\s*,?`, 'gi'), '');
     }
 
     // If any inline PRIMARY KEY exists, remove any remaining table-level PRIMARY KEY(...) to avoid duplicates
     if (/\bPRIMARY\s+KEY\b/i.test(newBody)) {
-      newBody = newBody.replace(/(,\s*)?(?:CONSTRAINT\s+\w+\s+)?PRIMARY\s+KEY\s*\([^)]*\)\s*(,\s*)?/gi, (match, leadingComma, trailingComma) => {
-        return leadingComma || trailingComma ? ',' : '';
-      });
+      newBody = newBody.replace(/CONSTRAINT\s+\w+\s+PRIMARY\s+KEY\s*\([^)]*\)\s*,?/gi, '');
     }
 
     // Clean up double commas, commas before closing paren, and extra whitespace
@@ -358,8 +380,9 @@ function populateHospitalCarIfEmpty() {
 function runQuery() {
   try {
     ensureDb();
-    const sql = document.getElementById('sql').value;
-    const results = db.exec(sql); // array of {columns, values}
+    const sqlRaw = document.getElementById('sql').value;
+    const sql = transformTsqlToSqlite(sqlRaw); // <-- transform here!
+    const results = db.exec(sql);
     renderResults(results);
     setStatus('query-status', 'Query executed');
   } catch (e) {
