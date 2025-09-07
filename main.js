@@ -368,8 +368,9 @@ function populateHospitalCarIfEmpty() {
 function runQuery() {
   try {
     ensureDb();
-    const sql = document.getElementById('sql').value;
-    const results = db.exec(sql); // array of {columns, values}
+    const sqlRaw = document.getElementById('sql').value;
+    const sql = transformTsqlToSqlite(sqlRaw); // <-- transform here!
+    const results = db.exec(sql);
     renderResults(results);
     setStatus('query-status', 'Query executed');
   } catch (e) {
