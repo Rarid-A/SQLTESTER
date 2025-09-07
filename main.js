@@ -229,8 +229,8 @@ function transformTsqlToSqlite(inputSql) {
   sql = sql.replace(
     /SELECT([\s\S]*?)INTO\s+(\w+)\s+(FROM[\s\S]*?;)/gi,
     (match, selectCols, tableName, fromRest) => {
-      // Clean up whitespace
-      return `CREATE TABLE ${tableName} AS SELECT${selectCols.trim()} ${fromRest.trim()}`;
+      // Clean up whitespace and ensure space after SELECT
+      return `CREATE TABLE ${tableName} AS SELECT ${selectCols.trim()} ${fromRest.trim()}`;
     }
   );
 
