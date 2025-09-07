@@ -164,6 +164,18 @@ VALUES
     ((SELECT IllnessID FROM Illness WHERE IllnessName = 'Insomnia'), (SELECT PatientID FROM Patient WHERE PatientNo = 'PP6')),
     ((SELECT IllnessID FROM Illness WHERE IllnessName = 'Amnesia'), (SELECT PatientID FROM Patient WHERE PatientNo = 'PP6'));
 
+    -- Insert data into Car
+-- We insert License Number (LicenseNo), Brand, Price, and link to Employee if applicable.
+INSERT INTO Car (LicenseNo, Brand, Price, EmployeeID)
+VALUES
+    ('C1', 'saab', 30000, NULL),
+    ('C2', 'saab', 40000, (SELECT EmployeeID FROM Employee WHERE EmpNo = 'E1')),
+    ('C3', 'volvo', 50000, (SELECT EmployeeID FROM Employee WHERE EmpNo = 'E2')),
+    ('C4', 'volvo', 60000, (SELECT EmployeeID FROM Employee WHERE EmpNo = 'E3')),
+    ('C5', 'audi', 70000, (SELECT EmployeeID FROM Employee WHERE EmpNo = 'E4')),
+    ('C6', 'audi', 30000, NULL),
+    ('C7', 'saab', 30000, (SELECT EmployeeID FROM Employee WHERE EmpNo = 'E5'));
+
 -- Drop tables (uncomment to drop)
 /*
 DROP TABLE HasSuffered;
