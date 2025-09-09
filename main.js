@@ -329,10 +329,13 @@ async function loadSqlJs() {
 function execDDL() {
   try {
     ensureDb();
-    const ddlRaw = document.getElementById('ddl').value;
+    const ddlRaw = window.ddlEditor ? window.ddlEditor.getValue() : document.getElementById('ddl').value;
     const ddl = transformTsqlToSqlite(ddlRaw);
     db.exec(ddl);
     setStatus('ddl-status', 'DDL executed');
+    if (window.ddlEditor) {
+      window.ddlEditor.setValue(ddlRaw); // Ensure the editor visually reflects the executed content
+    }
   } catch (e) {
     setStatus('ddl-status', e.message || 'Error', true);
   }
@@ -380,11 +383,14 @@ function populateHospitalCarIfEmpty() {
 function runQuery() {
   try {
     ensureDb();
-    const sqlRaw = document.getElementById('sql').value;
-    const sql = transformTsqlToSqlite(sqlRaw); // <-- transform here!
+    const sqlRaw = window.sqlEditor ? window.sqlEditor.getValue() : document.getElementById('sql').value;
+    const sql = transformTsqlToSqlite(sqlRaw);
     const results = db.exec(sql);
     renderResults(results);
     setStatus('query-status', 'Query executed');
+    if (window.sqlEditor) {
+      window.sqlEditor.setValue(sqlRaw); // Ensure the editor visually reflects the executed content
+    }
   } catch (e) {
     setStatus('query-status', e.message || 'Error', true);
   }
@@ -408,30 +414,87 @@ async function loadSample(key) {
 
   try {
     if (key === 'hospital-ddl') {
-      document.getElementById('ddl').value = HOSPITAL_DDL;
-      // Auto-execute the sample to ensure data is populated
-      execDDL();
-      // Ensure Car table has sample rows even if inline inserts were skipped
-      populateHospitalCarIfEmpty();
-      // Prefill a helpful query
-      const sqlBox = document.getElementById('sql');
-      if (sqlBox && !sqlBox.value.trim()) {
-        sqlBox.value = 'SELECT * FROM Car;';
+      if (window.ddlEditor) {
+        window.ddlEditor.setValue(HOSPITAL_DDL);
+      } else {
+        document.getElementById('ddl').value = HOSPITAL_DDL;
       }
-      setStatus('ddl-status', 'Sample loaded and executed');
+      // Wait a moment for the editor to update, then execute
+      setTimeout(() => {
+        execDDL();
+        populateHospitalCarIfEmpty();
+        if (window.sqlEditor) {
+          window.sqlEditor.setValue('SELECT * FROM Car;');
+        } else {
+          document.getElementById('sql').value = 'SELECT * FROM Car;';
+        }
+        setStatus('ddl-status', 'Sample loaded and executed');
+      }, 100);
       return;
     }
 
-    // Fallback for other keys (if added later)
     const response = await fetch(`${key}.sql`);
     if (!response.ok) {
       throw new Error(`Failed to fetch sample: ${response.statusText}`);
     }
     const text = await response.text();
-    document.getElementById('ddl').value = text;
-    setStatus('ddl-status', 'Sample loaded. Press Execute DDL.');
+    if (window.ddlEditor) {
+      window.ddlEditor.setValue(text);
+    } else {
+      document.getElementById('ddl').value = text;
+    }
+    setTimeout(() => {
+      execDDL();
+      setStatus('ddl-status', 'Sample loaded and executed');
+    }, 100);
   } catch (e) {
     setStatus('ddl-status', `Failed to load sample: ${e.message}`, true);
+  }
+}
+
+// Replace textareas with CodeMirror instances
+function initializeCodeMirror() {
+  const ddlTextarea = document.getElementById('ddl');
+  const sqlTextarea = document.getElementById('sql');
+
+  if (ddlTextarea) {
+    window.ddlEditor = CodeMirror.fromTextArea(ddlTextarea, {
+      mode: 'text/x-sql',
+      lineNumbers: true,
+      theme: 'default',
+      viewportMargin: Infinity,
+      lineWrapping: false,
+      scrollbarStyle: 'native'
+    });
+    
+    // Force width constraints
+    window.ddlEditor.getWrapperElement().style.width = '100%';
+    window.ddlEditor.getWrapperElement().style.maxWidth = '100%';
+    window.ddlEditor.getScrollerElement().style.maxWidth = '100%';
+    
+    window.ddlEditor.on('change', () => {
+      ddlTextarea.value = window.ddlEditor.getValue();
+    });
+  }
+
+  if (sqlTextarea) {
+    window.sqlEditor = CodeMirror.fromTextArea(sqlTextarea, {
+      mode: 'text/x-sql',
+      lineNumbers: true,
+      theme: 'default',
+      viewportMargin: Infinity,
+      lineWrapping: false,
+      scrollbarStyle: 'native'
+    });
+    
+    // Force width constraints
+    window.sqlEditor.getWrapperElement().style.width = '100%';
+    window.sqlEditor.getWrapperElement().style.maxWidth = '100%';
+    window.sqlEditor.getScrollerElement().style.maxWidth = '100%';
+    
+    window.sqlEditor.on('change', () => {
+      sqlTextarea.value = window.sqlEditor.getValue();
+    });
   }
 }
 
@@ -451,4 +514,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (sampleSelect) {
     sampleSelect.addEventListener('change', (e) => loadSample(e.target.value));
   }
+
+  initializeCodeMirror();
 });

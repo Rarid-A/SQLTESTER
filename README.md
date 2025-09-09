@@ -36,4 +36,5 @@ Try it now on GitHub Pages:
 
 - HTML, CSS, JavaScript
 - [sql.js](https://github.com/sql-js/sql.js) (SQLite compiled to WebAssembly)
+- [CodeMirror](https://codemirror.net/) for syntax highlighting and code editing
 - Responsive design with modern CSS

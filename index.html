@@ -9,12 +9,30 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600&family=Noto+Sans+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
   <style>
-    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
     .panel { background: #111935; padding: 16px; border-radius: 8px; }
     textarea { width: 100%; min-height: 260px; }
-    .toolbar { display:flex; gap:8px; margin-bottom:8px; align-items:center; flex-wrap: wrap; }
+    .toolbar { display:flex; gap:8px; margin-bottom:8px; align-items:center; flex-wrap: wrap; min-height: 30px; }
     .status { font-size:12px; color:#b7c7ff; margin-left:auto; }
+    .CodeMirror {
+      background: #0f1530;
+      color: #e6e6e6;
+      border: 1px solid #2a3358;
+      border-radius: 6px;
+      font-family: 'Noto Sans Mono', monospace;
+      height: 300px;
+      max-height: 300px;
+    }
+    .CodeMirror-gutters {
+      background: #0f1530;
+      border-right: 1px solid #2a3358;
+    }
+    .CodeMirror-scroll {
+      max-height: 300px;
+      overflow: auto;
+    }
   </style>
 </head>
 <body>
@@ -26,7 +44,6 @@
     <div class="two-col">
       <section class="panel">
         <div class="toolbar">
-          <strong>Schema (DDL)</strong>
           <button id="exec-ddl">Execute DDL</button>
           <button id="reset-db">Reset DB</button>
           <label style="margin-left:8px; font-size:12px;">
@@ -58,6 +75,8 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/sql/sql.min.js"></script>
   <script src="main.js"></script>
 </body>
 </html>
