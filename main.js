@@ -1,5 +1,6 @@
 let SQL;
 let db;
+let breakpoints = new Set(); // Track breakpoints by line number
 
 // Embedded sample to avoid fetch issues when opened via file://
 const HOSPITAL_DDL = `CREATE TABLE Unit (
@@ -267,6 +268,45 @@ function transformTsqlToSqlite(inputSql) {
   return sql;
 }
 
+function toggleBreakpoint(editor, line) {
+  const info = editor.lineInfo(line);
+  if (info.gutterMarkers && info.gutterMarkers.breakpoints) {
+    // Remove breakpoint
+    editor.setGutterMarker(line, "breakpoints", null);
+    breakpoints.delete(line);
+  } else {
+    // Add breakpoint
+    const marker = document.createElement('div');
+    marker.className = 'breakpoint';
+    marker.title = `Breakpoint at line ${line + 1}`;
+    editor.setGutterMarker(line, "breakpoints", marker);
+    breakpoints.add(line);
+  }
+}
+
+function getQueryUpToBreakpoint(sql) {
+  if (breakpoints.size === 0) {
+    return sql; // No breakpoints, return full query
+  }
+  
+  const lines = sql.split('\n');
+  const sortedBreakpoints = Array.from(breakpoints).sort((a, b) => a - b);
+  const firstBreakpoint = sortedBreakpoints[0];
+  
+  // Return lines up to and including the first breakpoint line
+  return lines.slice(0, firstBreakpoint + 1).join('\n');
+}
+
+function clearAllBreakpoints() {
+  if (window.sqlEditor) {
+    breakpoints.forEach(line => {
+      window.sqlEditor.setGutterMarker(line, "breakpoints", null);
+    });
+  }
+  breakpoints.clear();
+  setStatus('query-status', 'All breakpoints cleared');
+}
+
 function setStatus(id, msg, isError) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -333,9 +373,7 @@ function execDDL() {
     const ddl = transformTsqlToSqlite(ddlRaw);
     db.exec(ddl);
     setStatus('ddl-status', 'DDL executed');
-    if (window.ddlEditor) {
-      window.ddlEditor.setValue(ddlRaw); // Ensure the editor visually reflects the executed content
-    }
+    // Don't call setValue as it would refresh the editor unnecessarily
   } catch (e) {
     setStatus('ddl-status', e.message || 'Error', true);
   }
@@ -384,13 +422,26 @@ function runQuery() {
   try {
     ensureDb();
     const sqlRaw = window.sqlEditor ? window.sqlEditor.getValue() : document.getElementById('sql').value;
-    const sql = transformTsqlToSqlite(sqlRaw);
+    
+    // Get query up to first breakpoint if any breakpoints exist
+    const queryToExecute = getQueryUpToBreakpoint(sqlRaw);
+    
+    const sql = transformTsqlToSqlite(queryToExecute);
     const results = db.exec(sql);
     renderResults(results);
-    setStatus('query-status', 'Query executed');
-    if (window.sqlEditor) {
-      window.sqlEditor.setValue(sqlRaw); // Ensure the editor visually reflects the executed content
+    
+    // Update status to show if we stopped at a breakpoint
+    if (breakpoints.size > 0 && queryToExecute !== sqlRaw) {
+      const lines = sqlRaw.split('\n');
+      const sortedBreakpoints = Array.from(breakpoints).sort((a, b) => a - b);
+      const firstBreakpoint = sortedBreakpoints[0];
+      setStatus('query-status', `Query executed up to breakpoint at line ${firstBreakpoint + 1}`);
+    } else {
+      setStatus('query-status', 'Query executed');
     }
+    
+    // Don't call setValue as it clears the breakpoints
+    // The editor content hasn't changed, so no need to refresh it
   } catch (e) {
     setStatus('query-status', e.message || 'Error', true);
   }
@@ -481,6 +532,7 @@ function initializeCodeMirror() {
     window.sqlEditor = CodeMirror.fromTextArea(sqlTextarea, {
       mode: 'text/x-sql',
       lineNumbers: true,
+      gutters: ["CodeMirror-linenumbers", "breakpoints"],
       theme: 'default',
       viewportMargin: Infinity,
       lineWrapping: false,
@@ -491,6 +543,11 @@ function initializeCodeMirror() {
     window.sqlEditor.getWrapperElement().style.width = '100%';
     window.sqlEditor.getWrapperElement().style.maxWidth = '100%';
     window.sqlEditor.getScrollerElement().style.maxWidth = '100%';
+    
+    // Add breakpoint click handler
+    window.sqlEditor.on("gutterClick", function(cm, n) {
+      toggleBreakpoint(cm, n);
+    });
     
     window.sqlEditor.on('change', () => {
       sqlTextarea.value = window.sqlEditor.getValue();
@@ -508,6 +565,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('exec-ddl').addEventListener('click', execDDL);
   document.getElementById('run-query').addEventListener('click', runQuery);
   document.getElementById('reset-db').addEventListener('click', resetDb);
+  document.getElementById('clear-breakpoints').addEventListener('click', clearAllBreakpoints);
   
   // Add event listener for sample selector
   const sampleSelect = document.getElementById('sample-select');

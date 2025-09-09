@@ -39,12 +39,54 @@ textarea { width: 100%; min-height: 260px; }
   max-width: 100% !important;
   overflow: hidden !important;
   box-sizing: border-box !important;
+  background: #0f1530 !important;
+  color: #e6e6e6 !important;
+  border: 1px solid #2a3358;
+  border-radius: 6px;
+  font-family: 'Noto Sans Mono', monospace;
+  height: 300px;
 }
 
 .CodeMirror-scroll {
   max-width: 100% !important;
   overflow-x: auto !important;
   overflow-y: auto !important;
+  max-height: 300px;
+  background: #0f1530 !important;
+}
+
+.CodeMirror-gutters {
+  background: #0f1530 !important;
+  border-right: 1px solid #2a3358;
+}
+
+.CodeMirror-gutter.CodeMirror-linenumbers {
+  width: 40px;
+  padding-right: 5px;
+  text-align: right;
+  background: #0f1530 !important;
+  color: #b7c7ff !important;
+}
+
+.CodeMirror-gutter.breakpoints {
+  width: 12px;
+  background: #0f1530 !important;
+  cursor: pointer;
+}
+
+.CodeMirror-gutter.breakpoints:hover {
+  background: #1a2040 !important;
+}
+
+.breakpoint {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff4444;
+  border: 1px solid #ff6666;
+  margin-left: 1px;
+  cursor: pointer;
+  box-shadow: 0 0 2px rgba(255, 68, 68, 0.5);
 }
 
 .panel .CodeMirror {

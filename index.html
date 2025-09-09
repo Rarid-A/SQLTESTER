@@ -16,23 +16,6 @@
     textarea { width: 100%; min-height: 260px; }
     .toolbar { display:flex; gap:8px; margin-bottom:8px; align-items:center; flex-wrap: wrap; min-height: 30px; }
     .status { font-size:12px; color:#b7c7ff; margin-left:auto; }
-    .CodeMirror {
-      background: #0f1530;
-      color: #e6e6e6;
-      border: 1px solid #2a3358;
-      border-radius: 6px;
-      font-family: 'Noto Sans Mono', monospace;
-      height: 300px;
-      max-height: 300px;
-    }
-    .CodeMirror-gutters {
-      background: #0f1530;
-      border-right: 1px solid #2a3358;
-    }
-    .CodeMirror-scroll {
-      max-height: 300px;
-      overflow: auto;
-    }
   </style>
 </head>
 <body>
@@ -62,9 +45,10 @@
         <div class="toolbar">
           <strong>Query</strong>
           <button id="run-query">Run Query</button>
+          <button id="clear-breakpoints">Clear Breakpoints</button>
           <span class="status" id="query-status"></span>
         </div>
-        <textarea id="sql" placeholder="Write SELECT/INSERT/UPDATE/DELETE...&#10;Example:&#10;SELECT * FROM Unit;"></textarea>
+        <textarea id="sql" placeholder="Write SELECT/INSERT/UPDATE/DELETE...&#10;Example:&#10;SELECT * FROM Car&#10;WHERE Brand = 'Saab';&#10;&#10;💡 Click to the left of line numbers to add breakpoints!"></textarea>
       </section>
     </div>
 
